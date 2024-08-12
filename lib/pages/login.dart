@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/config/config.dart';
+import 'package:flutter_application_1/models/response/CustomersLoginPostResponse.dart';
+import 'package:flutter_application_1/models/response/Customers_login_post_req.dart';
 import 'package:flutter_application_1/pages/register.dart';
 import 'package:flutter_application_1/pages/showtrip.dart';
+import 'package:http/http.dart' as http;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +21,20 @@ class _LoginPageState extends State<LoginPage> {
   String phoneNo = '';
   TextEditingController phoneCtl = TextEditingController();
   TextEditingController passwordCtl = TextEditingController();
+  String url = '';
+
+  @override
+  void initState() {
+    super.initState();
+    Configuration.getConfig().then(
+      (valu) {
+        log(valu['apiEndpoint']);
+        url = valu['apiEndpoint'];
+      },
+    ).catchError((err) {
+      log(err.toString());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,8 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
             ),
-            // Text(errorText,style: const TextStyle(color: Colors.red))
-            Text(errorText)
+            Text(errorText),
           ],
         ),
       ),
@@ -97,34 +114,36 @@ class _LoginPageState extends State<LoginPage> {
 
   void register() {
     log('This is Register button');
-    // setState(() {
-    //   text = 'Hello word!!!';
-    // });
     Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const RegisterPage(),
-        ));
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RegisterPage(),
+      ),
+    );
   }
 
-  void login() {
-    // setState(() {
-    //   count++;
-    //   text = 'Login time:$count';
-    //   log('Login time:$count');
-    // });
-    if (phoneCtl.text == '0812345678' && passwordCtl.text == '1234') {
-      log(phoneCtl.text);
-      log(phoneCtl.text);
-       setState(() {
-        errorText = '';
-      });
+  void login() async {
+    var data = CustomersLoginPostRequest(
+        phone: phoneCtl.text, password: passwordCtl.text);
+    log('Sending data: ${jsonEncode(data.toJson())}');
+    try {
+      var value = await http.post(
+        Uri.parse('$url/customers/login'),
+        headers: {"Content-Type": "application/json; charset=utf-8"},
+        body: jsonEncode(data.toJson()),
+      );
+      CustomersLoginPostResponse customer =
+          customersLoginPostResponseFromJson(value.body);
+      log("Email: ${customer.customer.email}");
+      log("Name: ${customer.customer.fullname}");
+      log("Idx: ${customer.customer.idx}");
       Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ShowTrip(),
-          ));
-    } else {
+        context,
+        MaterialPageRoute(
+          builder: (context) => ShowTrip(cid: customer.customer.idx),
+        ),
+      );
+    } catch (eeee) {
       setState(() {
         errorText = 'หมายเลขโทรศัพท์หรือรหัสผ่านไม่ถูกต้อง';
       });
